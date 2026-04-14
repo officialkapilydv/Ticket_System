@@ -7,16 +7,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { ticketsApi } from '@/api/tickets';
 import { categoriesApi } from '@/api/categories';
+import { labelsApi } from '@/api/labels';
 import { adminApi } from '@/api/admin';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select } from '@/components/ui/Input';
-import { LABEL_OPTIONS } from '@/utils/formatters';
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required').max(255),
   description: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']),
-  label: z.enum(['new', 'qa_reported', 'client_reported', 'reporting', 'idea']).optional().nullable(),
+  label_id: z.coerce.number().optional().nullable(),
   category_id: z.coerce.number().optional().nullable(),
   assignee_id: z.coerce.number().optional().nullable(),
   due_date: z.string().optional().nullable(),
@@ -47,6 +47,11 @@ export function TicketForm() {
     queryFn: adminApi.listUsers,
   });
 
+  const { data: labels } = useQuery({
+    queryKey: ['labels'],
+    queryFn: labelsApi.list,
+  });
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { priority: 'medium' },
@@ -58,7 +63,7 @@ export function TicketForm() {
         title: ticket.title,
         description: ticket.description ?? '',
         priority: ticket.priority,
-        label: ticket.label ?? undefined,
+        label_id: ticket.label_id,
         category_id: ticket.category_id,
         assignee_id: ticket.assignee_id,
         due_date: ticket.due_date ?? '',
@@ -82,7 +87,7 @@ export function TicketForm() {
   const onSubmit = (values: FormValues) => {
     mutation.mutate({
       ...values,
-      label: values.label || null,
+      label_id: values.label_id || null,
       category_id: values.category_id || null,
       assignee_id: values.assignee_id || null,
     });
@@ -128,10 +133,10 @@ export function TicketForm() {
             <option value="critical">Critical</option>
           </Select>
 
-          <Select label="Label" {...register('label')}>
+          <Select label="Label" {...register('label_id')}>
             <option value="">No label</option>
-            {LABEL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {labels?.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
             ))}
           </Select>
 

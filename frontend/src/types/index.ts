@@ -14,7 +14,15 @@ export interface User {
 // ── Ticket ────────────────────────────────────────────────────────────────
 export type TicketStatus = 'open' | 'in_progress' | 'in_review' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
-export type TicketLabel = 'new' | 'qa_reported' | 'client_reported' | 'reporting' | 'idea';
+
+export interface Label {
+  id: number;
+  name: string;
+  slug: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Category {
   id: number;
@@ -33,7 +41,8 @@ export interface Ticket {
   description: string | null;
   status: TicketStatus;
   priority: TicketPriority;
-  label: TicketLabel | null;
+  label_id: number | null;
+  label: Label | null;
   category_id: number | null;
   reporter_id: number;
   assignee_id: number | null;

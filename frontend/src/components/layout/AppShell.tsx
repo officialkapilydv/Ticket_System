@@ -3,11 +3,13 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
 const PAGE_TITLES: Record<string, string> = {
+  '/dashboard': 'My Dashboard',
   '/tickets': 'Tickets',
   '/time-logs': 'My Time Logs',
   '/admin': 'Admin Dashboard',
   '/admin/users': 'User Management',
   '/admin/categories': 'Categories',
+  '/admin/labels': 'Labels',
 };
 
 export function AppShell() {

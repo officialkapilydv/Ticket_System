@@ -80,7 +80,7 @@ class UserController extends Controller
     {
         // Ticket stats
         $assignedTickets = $user->assignedTickets()
-            ->with(['category:id,name,color', 'reporter:id,name,avatar'])
+            ->with(['category:id,name,color', 'label:id,name,color', 'reporter:id,name,avatar'])
             ->latest()
             ->get();
 

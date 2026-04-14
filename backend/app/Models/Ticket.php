@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\TicketLabel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -17,7 +16,7 @@ class Ticket extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'ulid', 'title', 'description', 'status', 'priority', 'label',
+        'ulid', 'title', 'description', 'status', 'priority', 'label_id',
         'category_id', 'reporter_id', 'assignee_id',
         'due_date', 'estimated_hours', 'resolved_at', 'jira_issue_key',
     ];
@@ -25,11 +24,10 @@ class Ticket extends Model
     protected function casts(): array
     {
         return [
-            'status'       => TicketStatus::class,
-            'priority'     => TicketPriority::class,
-            'label'        => TicketLabel::class,
-            'due_date'     => 'date',
-            'resolved_at'  => 'datetime',
+            'status'      => TicketStatus::class,
+            'priority'    => TicketPriority::class,
+            'due_date'    => 'date',
+            'resolved_at' => 'datetime',
         ];
     }
 
@@ -60,6 +58,11 @@ class Ticket extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function label(): BelongsTo
+    {
+        return $this->belongsTo(Label::class);
     }
 
     public function attachments(): HasMany

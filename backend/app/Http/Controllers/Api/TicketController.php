@@ -18,17 +18,7 @@ class TicketController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-
-        $base = Ticket::query()
-            ->when($user->role->value === 'user', function ($q) use ($user) {
-                $q->where(function ($inner) use ($user) {
-                    $inner->where('assignee_id', $user->id)
-                          ->orWhere('reporter_id', $user->id);
-                });
-            });
-
-        $tickets = QueryBuilder::for($base)
+        $tickets = QueryBuilder::for(Ticket::class)
             ->allowedFilters(
                 AllowedFilter::exact('status'),
                 AllowedFilter::exact('priority'),
@@ -39,7 +29,7 @@ class TicketController extends Controller
             )
             ->allowedSorts('created_at', 'updated_at', 'due_date', 'priority', 'status', 'title')
             ->defaultSort('-created_at')
-            ->with(['reporter:id,name,avatar', 'assignee:id,name,avatar', 'category:id,name,color'])
+            ->with(['reporter:id,name,avatar', 'assignee:id,name,avatar', 'category:id,name,color', 'label:id,name,color'])
             ->withCount(['allComments as comments_count', 'attachments as attachments_count'])
             ->paginate($request->get('per_page', 20));
 
@@ -59,6 +49,7 @@ class TicketController extends Controller
             'reporter:id,name,avatar',
             'assignee:id,name,avatar',
             'category',
+            'label',
             'attachments.uploader:id,name',
             'timeLogs.user:id,name',
         ]);

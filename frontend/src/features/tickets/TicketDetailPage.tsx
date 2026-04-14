@@ -13,7 +13,7 @@ import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
 import { Input, Textarea, Select } from '@/components/ui/Input';
-import { formatDate, formatDateTime, formatRelative, minutesToHours, LABEL_LABELS, LABEL_COLORS } from '@/utils/formatters';
+import { formatDate, formatDateTime, formatRelative, minutesToHours } from '@/utils/formatters';
 import { useAuthStore } from '@/store/authStore';
 import client from '@/api/client';
 
@@ -434,8 +434,11 @@ export function TicketDetailPage() {
             {ticket.label && (
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Label</p>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${LABEL_COLORS[ticket.label]}`}>
-                  {LABEL_LABELS[ticket.label]}
+                <span
+                  className="text-xs px-2 py-1 rounded-full font-medium"
+                  style={{ backgroundColor: ticket.label.color + '20', color: ticket.label.color }}
+                >
+                  {ticket.label.name}
                 </span>
               </div>
             )}

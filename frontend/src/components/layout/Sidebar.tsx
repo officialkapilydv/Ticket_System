@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
 import {
-  LayoutDashboard, Ticket, Clock, Users, Tag,
-  ChevronLeft, ChevronRight, LogOut,
+  LayoutDashboard, Ticket, Clock, Users, Tag, Bookmark,
+  ChevronLeft, ChevronRight, LogOut, Home,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
@@ -14,10 +14,15 @@ const navItems = [
   { to: '/time-logs', label: 'My Time', icon: Clock },
 ];
 
+const userOnlyItems = [
+  { to: '/dashboard', label: 'My Dashboard', icon: Home },
+];
+
 const adminItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/categories', label: 'Categories', icon: Tag },
+  { to: '/admin/labels', label: 'Labels', icon: Bookmark },
 ];
 
 export function Sidebar() {
@@ -52,6 +57,25 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+        {/* My Dashboard — only for non-admin users */}
+        {!isAdmin() && userOnlyItems.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              )
+            }
+          >
+            <Icon size={18} className="flex-shrink-0" />
+            {sidebarOpen && <span>{label}</span>}
+          </NavLink>
+        ))}
+
         {navItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}

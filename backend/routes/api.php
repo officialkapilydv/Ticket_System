@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\UserDashboardController;
 use App\Http\Controllers\Api\AttachmentController;
+use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\ProfileController;
 use App\Http\Controllers\Api\CategoryController;
@@ -39,6 +41,9 @@ Route::prefix('v1')->group(function () {
         // Categories
         Route::get('/categories', [CategoryController::class, 'index']);
 
+        // Labels (readable by all authenticated users)
+        Route::get('/labels', [LabelController::class, 'index']);
+
         // Users (for assignee dropdown — all authenticated)
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/agents', [UserController::class, 'agents']);
@@ -71,6 +76,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/tickets/{ticket:ulid}/time-logs/{timeLog}', [TimeLogController::class, 'destroy']);
         Route::get('/time-logs/report', [TimeLogController::class, 'myReport']);
 
+        // User dashboard
+        Route::get('/dashboard/my-summary', [UserDashboardController::class, 'summary']);
+
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
@@ -94,6 +102,11 @@ Route::prefix('v1')->group(function () {
             // Categories management
             Route::post('/categories', [CategoryController::class, 'store']);
             Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+
+            // Labels management
+            Route::post('/labels', [LabelController::class, 'store']);
+            Route::put('/labels/{label}', [LabelController::class, 'update']);
+            Route::delete('/labels/{label}', [LabelController::class, 'destroy']);
         });
     });
 });

@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\TicketLabel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,13 +14,6 @@ class UpdateTicketRequest extends FormRequest
         return true;
     }
 
-    protected function prepareForValidation(): void
-    {
-        if ($this->label === '') {
-            $this->merge(['label' => null]);
-        }
-    }
-
     public function rules(): array
     {
         return [
@@ -29,7 +21,7 @@ class UpdateTicketRequest extends FormRequest
             'description'     => ['nullable', 'string'],
             'status'          => ['sometimes', new Enum(TicketStatus::class)],
             'priority'        => ['sometimes', new Enum(TicketPriority::class)],
-            'label'           => ['sometimes', 'nullable', new Enum(TicketLabel::class)],
+            'label_id'        => ['sometimes', 'nullable', 'exists:labels,id'],
             'category_id'     => ['nullable', 'exists:categories,id'],
             'assignee_id'     => ['nullable', 'exists:users,id'],
             'due_date'        => ['nullable', 'date'],
