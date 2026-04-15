@@ -9,7 +9,7 @@ class TimeLog extends Model
 {
     protected $table = 'ticket_time_logs';
 
-    protected $fillable = ['ticket_id', 'user_id', 'logged_date', 'minutes', 'description'];
+    protected $fillable = ['ticket_id', 'task_id', 'user_id', 'logged_date', 'minutes', 'description'];
 
     protected $appends = ['hours'];
 
@@ -23,6 +23,11 @@ class TimeLog extends Model
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);
+    }
+
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
     }
 
     public function user(): BelongsTo

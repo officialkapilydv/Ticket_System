@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
 import {
-  LayoutDashboard, Ticket, Clock, Users, Tag, Bookmark,
-  ChevronLeft, ChevronRight, LogOut, Home,
+  LayoutDashboard, Ticket, Clock, Users, Tag, Bookmark, Building2,
+  ChevronLeft, ChevronRight, LogOut, Home, FolderOpen, BarChart2,
+  CheckSquare, FileText,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useUiStore } from '@/store/uiStore';
@@ -10,8 +11,17 @@ import { Avatar } from '@/components/ui/Avatar';
 import { authApi } from '@/api/auth';
 
 const navItems = [
-  { to: '/tickets', label: 'Tickets', icon: Ticket },
-  { to: '/time-logs', label: 'My Time', icon: Clock },
+  { to: '/projects',         label: 'Projects',      icon: FolderOpen },
+  { to: '/tasks',            label: 'Tasks',         icon: CheckSquare },
+  { to: '/tickets',          label: 'Tickets',       icon: Ticket },
+  { to: '/time-logs',        label: 'My Time',       icon: Clock },
+];
+
+const reportItems = [
+  { to: '/time-report',      label: 'Time Report',   icon: BarChart2 },
+  { to: '/reports/projects', label: 'Project Reports', icon: FileText },
+  { to: '/reports/tasks',    label: 'Tasks Reports',   icon: FileText },
+  { to: '/reports/tickets',  label: 'Tickets Reports', icon: FileText },
 ];
 
 const userOnlyItems = [
@@ -21,8 +31,9 @@ const userOnlyItems = [
 const adminItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/categories', label: 'Categories', icon: Tag },
+  { to: '/admin/types', label: 'Types', icon: Tag },
   { to: '/admin/labels', label: 'Labels', icon: Bookmark },
+  { to: '/admin/partners', label: 'Partners', icon: Building2 },
 ];
 
 export function Sidebar() {
@@ -93,6 +104,30 @@ export function Sidebar() {
             {sidebarOpen && <span>{label}</span>}
           </NavLink>
         ))}
+
+        {/* Reports section — visible to all */}
+        <>
+          {sidebarOpen && (
+            <p className="text-xs text-gray-500 uppercase tracking-wider px-3 pt-4 pb-1">Reports</p>
+          )}
+          {reportItems.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                clsx(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                )
+              }
+            >
+              <Icon size={18} className="flex-shrink-0" />
+              {sidebarOpen && <span>{label}</span>}
+            </NavLink>
+          ))}
+        </>
 
         {isAdmin() && (
           <>

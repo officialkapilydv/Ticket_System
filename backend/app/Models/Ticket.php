@@ -7,6 +7,7 @@ use App\Enums\TicketStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -17,8 +18,9 @@ class Ticket extends Model
 
     protected $fillable = [
         'ulid', 'title', 'description', 'status', 'priority', 'label_id',
-        'category_id', 'reporter_id', 'assignee_id',
-        'due_date', 'estimated_hours', 'resolved_at', 'jira_issue_key',
+        'category_id', 'reporter_id', 'partner_id',
+        'project_id', 'milestone_id',
+        'due_date', 'estimated_hours', 'progress', 'resolved_at', 'jira_issue_key',
     ];
 
     protected function casts(): array
@@ -50,9 +52,10 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'reporter_id');
     }
 
-    public function assignee(): BelongsTo
+    public function assignees(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'assignee_id');
+        return $this->belongsToMany(User::class, 'ticket_assignees')
+                    ->select(['users.id', 'users.name', 'users.avatar']);
     }
 
     public function category(): BelongsTo
@@ -65,6 +68,21 @@ class Ticket extends Model
         return $this->belongsTo(Label::class);
     }
 
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function milestone(): BelongsTo
+    {
+        return $this->belongsTo(Milestone::class);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);
@@ -73,6 +91,11 @@ class Ticket extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class)->whereNull('parent_id')->with('replies.user', 'user');
+    }
+
+    public function scopeAssignee($query, $userId): void
+    {
+        $query->whereHas('assignees', fn ($q) => $q->where('users.id', $userId));
     }
 
     public function allComments(): HasMany

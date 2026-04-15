@@ -7,6 +7,7 @@ use App\Events\CommentPosted;
 use App\Models\AuditLog;
 use App\Models\Comment;
 use App\Models\Mention;
+use App\Models\Task;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,23 @@ class CommentService
             event(new CommentPosted($comment));
 
             return $comment->load(['user', 'replies.user', 'mentions.mentionedUser']);
+        });
+    }
+
+    public function createForTask(Task $task, array $data, User $author): Comment
+    {
+        return DB::transaction(function () use ($task, $data, $author) {
+            $comment = Comment::create([
+                ...$data,
+                'task_id'   => $task->id,
+                'ticket_id' => null,
+                'user_id'   => $author->id,
+                'body'      => $data['body'] ?? '',
+            ]);
+
+            $this->processMentions($comment, $data['body'] ?? '');
+
+            return $comment->load(['user', 'replies.user']);
         });
     }
 

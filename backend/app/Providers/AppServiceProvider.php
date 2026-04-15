@@ -11,8 +11,12 @@ use App\Listeners\NotifyMentionedUsers;
 use App\Listeners\SendSlackNotification;
 use App\Listeners\SendTicketAssignedNotification;
 use App\Models\Comment;
+use App\Models\Milestone;
+use App\Models\Project;
 use App\Models\Ticket;
 use App\Policies\CommentPolicy;
+use App\Policies\MilestonePolicy;
+use App\Policies\ProjectPolicy;
 use App\Policies\TicketPolicy;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -33,6 +37,8 @@ class AppServiceProvider extends ServiceProvider
         // Policies
         Gate::policy(Ticket::class, TicketPolicy::class);
         Gate::policy(Comment::class, CommentPolicy::class);
+        Gate::policy(Project::class, ProjectPolicy::class);
+        Gate::policy(Milestone::class, MilestonePolicy::class);
 
         // Events → Listeners
         Event::listen(TicketCreated::class, SendSlackNotification::class);

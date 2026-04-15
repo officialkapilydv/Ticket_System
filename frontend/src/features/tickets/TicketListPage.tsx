@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { ticketsApi } from '@/api/tickets';
+import { partnersApi } from '@/api/partners';
+import { projectsApi } from '@/api/projects';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Input';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { formatDate, formatRelative } from '@/utils/formatters';
@@ -17,18 +17,25 @@ export function TicketListPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
+  const [partnerId, setPartnerId] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tickets', { search, status, priority, page }],
+    queryKey: ['tickets', { search, status, priority, partnerId, projectId, page }],
     queryFn: () => ticketsApi.list({
       'filter[title]': search || undefined,
       status: status || undefined,
       priority: priority || undefined,
+      partner_id: partnerId ? Number(partnerId) : undefined,
+      project_id: projectId ? Number(projectId) : undefined,
       page,
     }),
     placeholderData: (prev) => prev,
   });
+
+  const { data: partners } = useQuery({ queryKey: ['partners'], queryFn: partnersApi.list });
+  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list });
 
   return (
     <div className="space-y-6">
@@ -81,6 +88,28 @@ export function TicketListPage() {
               <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
             ))}
           </select>
+          <select
+            value={partnerId}
+            onChange={(e) => { setPartnerId(e.target.value); setPage(1); }}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All Partners</option>
+            {partners?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.company ? `${p.name} (${p.company})` : p.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={projectId}
+            onChange={(e) => { setProjectId(e.target.value); setPage(1); }}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All Projects</option>
+            {projects?.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -117,6 +146,14 @@ export function TicketListPage() {
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-gray-400 font-mono">{ticket.ulid.slice(-8)}</span>
+                        {ticket.project && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={{ backgroundColor: ticket.project.color + '20', color: ticket.project.color }}
+                          >
+                            {ticket.project.key}
+                          </span>
+                        )}
                         {ticket.category && (
                           <span
                             className="text-xs px-2 py-0.5 rounded-full"
@@ -131,10 +168,19 @@ export function TicketListPage() {
                   <td className="px-6 py-4"><StatusBadge status={ticket.status} /></td>
                   <td className="px-6 py-4"><PriorityBadge priority={ticket.priority} /></td>
                   <td className="px-6 py-4">
-                    {ticket.assignee ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar src={ticket.assignee.avatar_url} name={ticket.assignee.name} size="sm" />
-                        <span className="text-gray-700 text-sm">{ticket.assignee.name}</span>
+                    {ticket.assignees && ticket.assignees.length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-2">
+                          {ticket.assignees.slice(0, 3).map((a) => (
+                            <Avatar key={a.id} src={a.avatar_url} name={a.name} size="sm" className="ring-2 ring-white" />
+                          ))}
+                        </div>
+                        {ticket.assignees.length === 1 && (
+                          <span className="text-gray-700 text-sm">{ticket.assignees[0].name}</span>
+                        )}
+                        {ticket.assignees.length > 3 && (
+                          <span className="text-xs text-gray-500">+{ticket.assignees.length - 3}</span>
+                        )}
                       </div>
                     ) : (
                       <span className="text-gray-400 text-sm">Unassigned</span>

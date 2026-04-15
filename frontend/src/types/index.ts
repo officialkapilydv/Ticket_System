@@ -11,8 +11,44 @@ export interface User {
   is_active: boolean;
 }
 
+// ── Project ───────────────────────────────────────────────────────────────
+export type ProjectStatus = 'active' | 'archived';
+
+export interface Project {
+  id: number;
+  name: string;
+  key: string;
+  description: string | null;
+  color: string;
+  status: ProjectStatus;
+  owner_id: number | null;
+  owner: User | null;
+  tickets_count?: number;
+  milestones_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Milestone ─────────────────────────────────────────────────────────────
+export type MilestoneStatus = 'planned' | 'active' | 'completed';
+
+export interface Milestone {
+  id: number;
+  project_id: number;
+  name: string;
+  description: string | null;
+  status: MilestoneStatus;
+  start_date: string | null;
+  due_date: string | null;
+  tickets_count?: number;
+  completed_tickets_count?: number;
+  progress?: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Ticket ────────────────────────────────────────────────────────────────
-export type TicketStatus = 'open' | 'in_progress' | 'in_review' | 'resolved' | 'closed';
+export type TicketStatus   = 'open' | 'in_progress' | 'in_review' | 'resolved' | 'closed';
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 
 export interface Label {
@@ -20,6 +56,17 @@ export interface Label {
   name: string;
   slug: string;
   color: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Partner {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  website: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +81,32 @@ export interface Category {
   children?: Category[];
 }
 
+export interface Task {
+  id: number;
+  ulid: string;
+  title: string;
+  description: string | null;
+  status: TicketStatus;
+  priority: TicketPriority;
+  label_id: number | null;
+  label: Label | null;
+  project_id: number | null;
+  project: Project | null;
+  milestone_id: number | null;
+  milestone: Milestone | null;
+  category_id: number | null;
+  reporter_id: number;
+  assignees: User[];
+  due_date: string | null;
+  estimated_hours: number | null;
+  progress: number;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  reporter: User;
+  category: Category | null;
+}
+
 export interface Ticket {
   id: number;
   ulid: string;
@@ -43,16 +116,22 @@ export interface Ticket {
   priority: TicketPriority;
   label_id: number | null;
   label: Label | null;
+  partner_id: number | null;
+  partner: Partner | null;
+  project_id: number | null;
+  project: Project | null;
+  milestone_id: number | null;
+  milestone: Milestone | null;
   category_id: number | null;
   reporter_id: number;
-  assignee_id: number | null;
+  assignees: User[];
   due_date: string | null;
   estimated_hours: number | null;
+  progress: number;
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
   reporter: User;
-  assignee: User | null;
   category: Category | null;
   comments_count?: number;
   attachments_count?: number;
@@ -81,6 +160,9 @@ export interface Comment {
   parent_id: number | null;
   body: string;
   is_internal: boolean;
+  minutes: number | null;
+  logged_hours: number | null;
+  logged_date: string | null;
   created_at: string;
   updated_at: string;
   user: User;

@@ -6,6 +6,9 @@ export interface TicketFilters {
   priority?: string;
   category_id?: number;
   assignee_id?: number;
+  partner_id?: number;
+  project_id?: number;
+  milestone_id?: number;
   'filter[title]'?: string;
   sort?: string;
   page?: number;
@@ -19,6 +22,9 @@ export const ticketsApi = {
     if (filters.priority) params['filter[priority]'] = filters.priority;
     if (filters.category_id) params['filter[category_id]'] = filters.category_id;
     if (filters.assignee_id) params['filter[assignee_id]'] = filters.assignee_id;
+    if (filters.partner_id) params['filter[partner_id]'] = filters.partner_id;
+    if (filters.project_id) params['filter[project_id]'] = filters.project_id;
+    if (filters.milestone_id) params['filter[milestone_id]'] = filters.milestone_id;
     if (filters['filter[title]']) params['filter[title]'] = filters['filter[title]'];
     if (filters.sort) params.sort = filters.sort;
     params.page = filters.page ?? 1;

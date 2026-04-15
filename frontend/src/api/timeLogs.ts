@@ -20,4 +20,11 @@ export const timeLogsApi = {
     const { data } = await client.get('/time-logs/report', { params: { from, to } });
     return data;
   },
+
+  fullReport: async (from: string, to: string, userId?: number) => {
+    const { data } = await client.get('/time-logs/full-report', {
+      params: { from, to, user_id: userId },
+    });
+    return data;
+  },
 };

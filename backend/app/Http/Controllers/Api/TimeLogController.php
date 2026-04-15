@@ -63,4 +63,21 @@ class TimeLogController extends Controller
 
         return response()->json($report);
     }
+
+    public function fullReport(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from'    => ['required', 'date'],
+            'to'      => ['required', 'date', 'after_or_equal:from'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $report = $this->timeLogService->fullReport(
+            $request->from,
+            $request->to,
+            $request->user_id ? (int) $request->user_id : null
+        );
+
+        return response()->json($report);
+    }
 }

@@ -18,11 +18,18 @@ class TicketService
     public function create(array $data, User $reporter): Ticket
     {
         return DB::transaction(function () use ($data, $reporter) {
+            $assigneeIds = $data['assignee_ids'] ?? [];
+            unset($data['assignee_ids']);
+
             $ticket = Ticket::create([
                 ...$data,
                 'reporter_id' => $reporter->id,
                 'status'      => TicketStatus::Open->value,
             ]);
+
+            if (!empty($assigneeIds)) {
+                $ticket->assignees()->sync($assigneeIds);
+            }
 
             AuditLog::create([
                 'ticket_id'  => $ticket->id,
@@ -34,24 +41,36 @@ class TicketService
 
             event(new TicketCreated($ticket));
 
-            return $ticket->load(['reporter', 'assignee', 'category']);
+            return $ticket->load(['reporter', 'assignees', 'category']);
         });
     }
 
     public function update(Ticket $ticket, array $data, User $actor): Ticket
     {
         return DB::transaction(function () use ($ticket, $data, $actor) {
-            $trackedKeys = ['title', 'description', 'priority', 'status', 'assignee_id', 'category_id', 'due_date'];
+            $assigneeIds = array_key_exists('assignee_ids', $data) ? $data['assignee_ids'] : null;
+            unset($data['assignee_ids']);
+
+            $trackedKeys = ['title', 'description', 'priority', 'status', 'category_id', 'due_date'];
             $oldValues   = array_intersect_key($ticket->getRawOriginal(), array_flip($trackedKeys));
-            $oldAssignee = $ticket->assignee_id;
+            $oldAssigneeIds = $ticket->assignees()->pluck('users.id')->sort()->values()->toArray();
 
             $ticket->update($data);
             $ticket->refresh();
 
-            $newValues = array_intersect_key($ticket->getRawOriginal(), array_flip($trackedKeys));
-            $changed = array_diff_assoc($newValues, $oldValues);
+            if ($assigneeIds !== null) {
+                $ticket->assignees()->sync($assigneeIds);
+            }
 
-            if (! empty($changed)) {
+            $newValues = array_intersect_key($ticket->getRawOriginal(), array_flip($trackedKeys));
+            $changed   = array_diff_assoc($newValues, $oldValues);
+
+            $newAssigneeIds = $ticket->assignees()->pluck('users.id')->sort()->values()->toArray();
+            if ($oldAssigneeIds !== $newAssigneeIds) {
+                $changed['assignee_ids'] = $newAssigneeIds;
+            }
+
+            if (!empty($changed)) {
                 AuditLog::create([
                     'ticket_id'  => $ticket->id,
                     'user_id'    => $actor->id,
@@ -65,14 +84,14 @@ class TicketService
                     event(new TicketStatusChanged($ticket, $oldValues['status']));
                 }
 
-                if (isset($changed['assignee_id']) && $ticket->assignee_id) {
-                    event(new TicketAssigned($ticket, $oldAssignee));
+                if (isset($changed['assignee_ids']) && !empty($newAssigneeIds)) {
+                    event(new TicketAssigned($ticket, null));
                 }
 
                 event(new TicketUpdated($ticket));
             }
 
-            return $ticket->load(['reporter', 'assignee', 'category']);
+            return $ticket->load(['reporter', 'assignees', 'category']);
         });
     }
 
@@ -99,25 +118,25 @@ class TicketService
         return $ticket->refresh();
     }
 
-    public function assign(Ticket $ticket, ?int $assigneeId, User $actor): Ticket
+    public function assign(Ticket $ticket, array $assigneeIds, User $actor): Ticket
     {
-        $oldAssignee = $ticket->assignee_id;
+        $oldIds = $ticket->assignees()->pluck('users.id')->toArray();
 
-        $ticket->update(['assignee_id' => $assigneeId]);
+        $ticket->assignees()->sync($assigneeIds);
 
         AuditLog::create([
             'ticket_id'  => $ticket->id,
             'user_id'    => $actor->id,
-            'event'      => $assigneeId ? AuditEvent::Assigned->value : AuditEvent::Unassigned->value,
-            'old_values' => ['assignee_id' => $oldAssignee],
-            'new_values' => ['assignee_id' => $assigneeId],
+            'event'      => !empty($assigneeIds) ? AuditEvent::Assigned->value : AuditEvent::Unassigned->value,
+            'old_values' => ['assignee_ids' => $oldIds],
+            'new_values' => ['assignee_ids' => $assigneeIds],
             'created_at' => now(),
         ]);
 
-        if ($assigneeId) {
-            event(new TicketAssigned($ticket, $oldAssignee));
+        if (!empty($assigneeIds)) {
+            event(new TicketAssigned($ticket, null));
         }
 
-        return $ticket->load('assignee');
+        return $ticket->load('assignees');
     }
 }

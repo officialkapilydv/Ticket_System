@@ -7,6 +7,7 @@ use App\Http\Requests\StoreCommentRequest;
 use App\Models\Comment;
 use App\Models\CommentAttachment;
 use App\Models\Ticket;
+use App\Models\TimeLog;
 use App\Services\CommentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,6 +47,28 @@ class CommentController extends Controller
                     'file_size'   => $file->getSize(),
                 ]);
             }
+        }
+
+        if ($comment->minutes) {
+            TimeLog::create([
+                'ticket_id'   => $ticket->id,
+                'user_id'     => $request->user()->id,
+                'logged_date' => $comment->logged_date ?? now()->toDateString(),
+                'minutes'     => $comment->minutes,
+                'description' => $comment->body ?: null,
+            ]);
+        }
+
+        // Apply any ticket field updates sent alongside the comment
+        $ticketUpdates = [];
+        foreach (['status', 'priority', 'label_id', 'category_id', 'due_date', 'progress'] as $field) {
+            $value = $request->validated()[$field] ?? null;
+            if ($value !== null) {
+                $ticketUpdates[$field] = $value;
+            }
+        }
+        if (!empty($ticketUpdates)) {
+            $ticket->update($ticketUpdates);
         }
 
         $comment->load(['user:id,name,avatar', 'attachments', 'replies.user:id,name,avatar', 'replies.attachments']);

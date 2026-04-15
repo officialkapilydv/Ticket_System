@@ -23,13 +23,16 @@ class TicketController extends Controller
                 AllowedFilter::exact('status'),
                 AllowedFilter::exact('priority'),
                 AllowedFilter::exact('category_id'),
-                AllowedFilter::exact('assignee_id'),
+                AllowedFilter::scope('assignee'),
                 AllowedFilter::exact('reporter_id'),
+                AllowedFilter::exact('partner_id'),
+                AllowedFilter::exact('project_id'),
+                AllowedFilter::exact('milestone_id'),
                 AllowedFilter::partial('title'),
             )
             ->allowedSorts('created_at', 'updated_at', 'due_date', 'priority', 'status', 'title')
             ->defaultSort('-created_at')
-            ->with(['reporter:id,name,avatar', 'assignee:id,name,avatar', 'category:id,name,color', 'label:id,name,color'])
+            ->with(['reporter:id,name,avatar', 'assignees', 'category:id,name,color', 'label:id,name,color', 'partner:id,name,company', 'project:id,name,key,color', 'milestone:id,name,status'])
             ->withCount(['allComments as comments_count', 'attachments as attachments_count'])
             ->paginate($request->get('per_page', 20));
 
@@ -47,9 +50,12 @@ class TicketController extends Controller
     {
         $ticket->load([
             'reporter:id,name,avatar',
-            'assignee:id,name,avatar',
+            'assignees',
             'category',
             'label',
+            'partner',
+            'project:id,name,key,color',
+            'milestone:id,name,status,due_date',
             'attachments.uploader:id,name',
             'timeLogs.user:id,name',
         ]);
@@ -89,10 +95,11 @@ class TicketController extends Controller
         $this->authorize('assign', $ticket);
 
         $request->validate([
-            'assignee_id' => ['nullable', 'exists:users,id'],
+            'assignee_ids'   => ['nullable', 'array'],
+            'assignee_ids.*' => ['exists:users,id'],
         ]);
 
-        $ticket = $this->ticketService->assign($ticket, $request->assignee_id, $request->user());
+        $ticket = $this->ticketService->assign($ticket, $request->input('assignee_ids', []), $request->user());
 
         return response()->json($ticket);
     }

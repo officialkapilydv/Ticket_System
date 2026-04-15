@@ -43,7 +43,7 @@ export function AdminCategoriesPage() {
 
   const createMutation = useMutation({
     mutationFn: (values: FormValues) =>
-      client.post('/admin/categories', values).then((r) => r.data),
+      client.post('/admin/types', values).then((r) => r.data),
     onSuccess: () => {
       setCreateModal(false);
       reset();
@@ -53,7 +53,7 @@ export function AdminCategoriesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) =>
-      client.delete(`/admin/categories/${id}`).then((r) => r.data),
+      client.delete(`/admin/types/${id}`).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
   });
 
@@ -66,11 +66,11 @@ export function AdminCategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Categories</h2>
-          <p className="text-sm text-gray-500 mt-1">{allCategories.length} categories</p>
+          <h2 className="text-2xl font-bold text-gray-900">Types</h2>
+          <p className="text-sm text-gray-500 mt-1">{allCategories.length} type{allCategories.length !== 1 ? 's' : ''}</p>
         </div>
         <Button onClick={() => setCreateModal(true)}>
-          <Plus size={16} /> New Category
+          <Plus size={16} /> New Type
         </Button>
       </div>
 
@@ -79,8 +79,8 @@ export function AdminCategoriesPage() {
       ) : allCategories.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
           <Tag size={40} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500">No categories yet.</p>
-          <p className="text-sm text-gray-400 mt-1">Create your first category to organize tickets.</p>
+          <p className="text-gray-500">No types yet.</p>
+          <p className="text-sm text-gray-400 mt-1">Create your first type to organize tickets.</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4">
@@ -106,7 +106,7 @@ export function AdminCategoriesPage() {
               </div>
               <button
                 onClick={() => {
-                  if (confirm(`Delete "${cat.name}"? Tickets in this category will become uncategorized.`)) {
+                  if (confirm(`Delete "${cat.name}"? Tickets with this type will become untyped.`)) {
                     deleteMutation.mutate(cat.id);
                   }
                 }}
@@ -120,7 +120,7 @@ export function AdminCategoriesPage() {
       )}
 
       {/* Create Modal */}
-      <Modal open={createModal} onClose={() => { setCreateModal(false); reset(); }} title="New Category">
+      <Modal open={createModal} onClose={() => { setCreateModal(false); reset(); }} title="New Type">
         <form onSubmit={handleSubmit((v) => createMutation.mutate(v))} className="space-y-4">
           <Input
             label="Name *"
@@ -162,7 +162,7 @@ export function AdminCategoriesPage() {
               className="text-xs px-2.5 py-1 rounded-full font-medium"
               style={{ backgroundColor: selectedColor + '20', color: selectedColor }}
             >
-              {watch('name') || 'Category Name'}
+              {watch('name') || 'Type Name'}
             </span>
           </div>
 
@@ -179,12 +179,12 @@ export function AdminCategoriesPage() {
           />
 
           {createMutation.isError && (
-            <p className="text-sm text-red-600">Failed to create category. Please try again.</p>
+            <p className="text-sm text-red-600">Failed to create type. Please try again.</p>
           )}
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" loading={isSubmitting || createMutation.isPending}>
-              Create Category
+              Create Type
             </Button>
             <Button type="button" variant="outline" onClick={() => { setCreateModal(false); reset(); }}>
               Cancel

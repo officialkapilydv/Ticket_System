@@ -73,4 +73,55 @@ class TimeLogService
             'total_hours'   => round($logs->sum('minutes') / 60, 2),
         ];
     }
+
+    public function fullReport(string $from, string $to, ?int $userId = null): array
+    {
+        $query = TimeLog::with([
+            'user:id,name,email',
+            'task:id,ulid,title,status,project_id',
+            'task.project:id,name',
+            'task.assignees:id,name',
+        ])->whereBetween('logged_date', [$from, $to]);
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $logs = $query->orderBy('logged_date')->orderBy('created_at')->get();
+
+        $byUser = $logs->groupBy('user_id')->map(fn ($userLogs) => [
+            'user'          => $userLogs->first()->user,
+            'total_minutes' => $userLogs->sum('minutes'),
+            'total_hours'   => round($userLogs->sum('minutes') / 60, 2),
+            'entries'       => $userLogs->count(),
+        ])->values();
+
+        // Group by task — logs without a task get a null key grouped together
+        $byTask = $logs->groupBy('task_id')->map(fn ($taskLogs) => [
+            'task'          => $taskLogs->first()->task,
+            'project'       => $taskLogs->first()->task?->project,
+            'assignees'     => $taskLogs->first()->task?->assignees ?? collect(),
+            'total_minutes' => $taskLogs->sum('minutes'),
+            'total_hours'   => round($taskLogs->sum('minutes') / 60, 2),
+        ])->values();
+
+        $byProject = $logs
+            ->filter(fn ($log) => $log->task?->project_id !== null)
+            ->groupBy(fn ($log) => $log->task->project_id)
+            ->map(fn ($projectLogs) => [
+                'project'       => $projectLogs->first()->task->project,
+                'total_minutes' => $projectLogs->sum('minutes'),
+                'total_hours'   => round($projectLogs->sum('minutes') / 60, 2),
+                'entries'       => $projectLogs->count(),
+            ])->values();
+
+        return [
+            'logs'          => $logs,
+            'by_user'       => $byUser,
+            'by_task'       => $byTask,
+            'by_project'    => $byProject,
+            'total_minutes' => $logs->sum('minutes'),
+            'total_hours'   => round($logs->sum('minutes') / 60, 2),
+        ];
+    }
 }

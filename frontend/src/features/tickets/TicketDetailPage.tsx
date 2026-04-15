@@ -1,23 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, Edit, Trash2, Clock, Paperclip,
+  ArrowLeft, Edit, Trash2, Paperclip,
   MessageSquare, History, ChevronDown, X, FileText, Image,
 } from 'lucide-react';
 import { ticketsApi } from '@/api/tickets';
 import { commentsApi } from '@/api/comments';
-import { timeLogsApi } from '@/api/timeLogs';
+import { categoriesApi } from '@/api/categories';
+import { labelsApi } from '@/api/labels';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
-import { Input, Textarea, Select } from '@/components/ui/Input';
-import { formatDate, formatDateTime, formatRelative, minutesToHours } from '@/utils/formatters';
+import { Input, Select } from '@/components/ui/Input';
+import { formatDate, formatDateTime, formatRelative } from '@/utils/formatters';
 import { useAuthStore } from '@/store/authStore';
 import client from '@/api/client';
 
-const TABS = ['Comments', 'Time Logs', 'Attachments', 'History'] as const;
+const TABS = ['Comments', 'Attachments', 'History'] as const;
 type Tab = typeof TABS[number];
 
 export function TicketDetailPage() {
@@ -28,28 +29,46 @@ export function TicketDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Comments');
   const [commentBody, setCommentBody] = useState('');
   const [commentFiles, setCommentFiles] = useState<File[]>([]);
-  const [timeLogModal, setTimeLogModal] = useState(false);
+  const [commentModal, setCommentModal] = useState(false);
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+  // time log
+  const [logHours, setLogHours] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  // ticket fields editable via comment
+  const [cmtStatus, setCmtStatus] = useState('');
+  const [cmtPriority, setCmtPriority] = useState('');
+  const [cmtLabelId, setCmtLabelId] = useState('');
+  const [cmtCategoryId, setCmtCategoryId] = useState('');
+  const [cmtDueDate, setCmtDueDate] = useState('');
+  const [cmtProgress, setCmtProgress] = useState('');
+  // status quick-change modal
   const [statusModal, setStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState('');
-  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
-  const [logMinutes, setLogMinutes] = useState('60');
-  const [logDesc, setLogDesc] = useState('');
 
   const { data: ticket, isLoading } = useQuery({
     queryKey: ['ticket', ulid],
     queryFn: () => ticketsApi.get(ulid!),
   });
 
+  const { data: labels } = useQuery({ queryKey: ['labels'], queryFn: labelsApi.list });
+  const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: categoriesApi.list });
+
+  // Initialise comment modal fields from current ticket when modal opens
+  useEffect(() => {
+    if (commentModal && ticket) {
+      setCmtStatus(ticket.status);
+      setCmtPriority(ticket.priority);
+      setCmtLabelId(ticket.label_id ? String(ticket.label_id) : '');
+      setCmtCategoryId(ticket.category_id ? String(ticket.category_id) : '');
+      setCmtDueDate(ticket.due_date ?? '');
+      setCmtProgress(String(ticket.progress ?? 0));
+    }
+  }, [commentModal]);
+
   const { data: comments } = useQuery({
     queryKey: ['comments', ulid],
     queryFn: () => commentsApi.list(ulid!),
     enabled: activeTab === 'Comments',
-  });
-
-  const { data: timeLogs } = useQuery({
-    queryKey: ['timeLogs', ulid],
-    queryFn: () => timeLogsApi.list(ulid!),
-    enabled: activeTab === 'Time Logs',
   });
 
   const { data: history } = useQuery({
@@ -58,23 +77,38 @@ export function TicketDetailPage() {
     enabled: activeTab === 'History',
   });
 
-  const commentMutation = useMutation({
-    mutationFn: () => commentsApi.create(ulid!, { body: commentBody }, commentFiles),
-    onSuccess: () => {
+  const handleCommentSubmit = async () => {
+    const hasComment = commentBody.trim() || commentFiles.length > 0;
+    const hasTimeLog = logHours && parseFloat(logHours) > 0;
+    if (!hasComment && !hasTimeLog) return;
+    setIsCommentSubmitting(true);
+    try {
+      const minutes = hasTimeLog ? Math.round(parseFloat(logHours) * 60) : undefined;
+      await commentsApi.create(
+        ulid!,
+        {
+          body: commentBody,
+          minutes,
+          logged_date: minutes ? logDate : undefined,
+          status: cmtStatus || undefined,
+          priority: cmtPriority || undefined,
+          label_id: cmtLabelId ? Number(cmtLabelId) : undefined,
+          category_id: cmtCategoryId ? Number(cmtCategoryId) : undefined,
+          due_date: cmtDueDate || undefined,
+          progress: cmtProgress !== '' ? Number(cmtProgress) : undefined,
+        },
+        commentFiles,
+      );
+      qc.invalidateQueries({ queryKey: ['comments', ulid] });
+      qc.invalidateQueries({ queryKey: ['ticket', ulid] });
       setCommentBody('');
       setCommentFiles([]);
-      qc.invalidateQueries({ queryKey: ['comments', ulid] });
-    },
-  });
-
-  const timeLogMutation = useMutation({
-    mutationFn: () => timeLogsApi.log(ulid!, { logged_date: logDate, minutes: parseInt(logMinutes), description: logDesc }),
-    onSuccess: () => {
-      setTimeLogModal(false); setLogDesc(''); setLogMinutes('60');
-      qc.invalidateQueries({ queryKey: ['timeLogs', ulid] });
-      qc.invalidateQueries({ queryKey: ['ticket', ulid] });
-    },
-  });
+      setLogHours('');
+      setCommentModal(false);
+    } finally {
+      setIsCommentSubmitting(false);
+    }
+  };
 
   const statusMutation = useMutation({
     mutationFn: () => ticketsApi.changeStatus(ulid!, newStatus),
@@ -89,7 +123,7 @@ export function TicketDetailPage() {
   if (isLoading) return <div className="text-center py-20 text-gray-500">Loading ticket...</div>;
   if (!ticket) return <div className="text-center py-20 text-red-500">Ticket not found.</div>;
 
-  const canEdit = isAdmin() || ticket.reporter_id === user?.id || ticket.assignee_id === user?.id;
+  const canEdit = isAdmin() || ticket.reporter_id === user?.id || ticket.assignees?.some((a) => a.id === user?.id);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -150,7 +184,6 @@ export function TicketDetailPage() {
                 >
                   {tab}
                   {tab === 'Comments' && comments && ` (${comments.length})`}
-                  {tab === 'Time Logs' && ticket.total_hours_logged && ` (${ticket.total_hours_logged}h)`}
                 </button>
               ))}
             </div>
@@ -169,6 +202,11 @@ export function TicketDetailPage() {
                         </div>
                         {comment.body && (
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.body}</p>
+                        )}
+                        {comment.logged_hours != null && (
+                          <ul className="mt-2 list-disc list-inside text-sm text-gray-600">
+                            <li>Work Hours: {comment.logged_hours}</li>
+                          </ul>
                         )}
                         {/* Comment attachments */}
                         {comment.attachments && comment.attachments.length > 0 && (
@@ -242,103 +280,19 @@ export function TicketDetailPage() {
                     </div>
                   ))}
 
-                  {/* Comment box */}
-                  <div className="flex gap-3">
+                  {/* Add comment button */}
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-3">
                     <Avatar src={user?.avatar_url} name={user?.name ?? ''} size="sm" />
-                    <div className="flex-1">
-                      <textarea
-                        rows={3}
-                        value={commentBody}
-                        onChange={(e) => setCommentBody(e.target.value)}
-                        placeholder="Add a comment... Use @username to mention someone"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                      />
-
-                      {/* Selected file chips */}
-                      {commentFiles.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {commentFiles.map((file, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs px-2 py-1 rounded-full"
-                            >
-                              {file.type.startsWith('image/') ? <Image size={11} /> : <FileText size={11} />}
-                              <span className="max-w-[140px] truncate">{file.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => setCommentFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                                className="hover:text-red-500 transition-colors"
-                              >
-                                <X size={11} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button
-                          size="sm"
-                          disabled={!commentBody.trim() && commentFiles.length === 0}
-                          loading={commentMutation.isPending}
-                          onClick={() => commentMutation.mutate()}
-                        >
-                          Post Comment
-                        </Button>
-                        {/* File picker */}
-                        <input
-                          id="comment-file-input"
-                          type="file"
-                          multiple
-                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv"
-                          className="hidden"
-                          onChange={(e) => {
-                            const picked = Array.from(e.target.files ?? []);
-                            setCommentFiles((prev) => [...prev, ...picked]);
-                            e.target.value = '';
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => document.getElementById('comment-file-input')?.click()}
-                          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-indigo-600 transition-colors px-2 py-1.5 border border-gray-300 rounded-lg hover:border-indigo-400"
-                        >
-                          <Paperclip size={13} />
-                          Attach
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Time Logs tab */}
-              {activeTab === 'Time Logs' && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-sm text-gray-500">
-                      Total logged: <strong>{minutesToHours((timeLogs ?? []).reduce((s, l) => s + l.minutes, 0))}</strong>
-                    </p>
-                    <Button size="sm" onClick={() => setTimeLogModal(true)}>
-                      <Clock size={14} /> Log Time
+                    <button
+                      onClick={() => setCommentModal(true)}
+                      className="flex-1 text-left text-sm text-gray-400 border border-gray-200 rounded-lg px-4 py-2.5 hover:border-indigo-400 hover:text-gray-600 transition-colors bg-gray-50 hover:bg-white cursor-text"
+                    >
+                      Add a comment or log time...
+                    </button>
+                    <Button size="sm" onClick={() => setCommentModal(true)}>
+                      <MessageSquare size={14} /> Add Comment
                     </Button>
                   </div>
-                  {timeLogs?.map((log) => (
-                    <div key={log.id} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
-                      <Avatar src={log.user.avatar_url} name={log.user.name} size="sm" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">{log.user.name}</span>
-                          <span className="text-sm text-indigo-600 font-semibold">{minutesToHours(log.minutes)}</span>
-                          <span className="text-xs text-gray-400">{formatDate(log.logged_date)}</span>
-                        </div>
-                        {log.description && <p className="text-xs text-gray-500 mt-0.5">{log.description}</p>}
-                      </div>
-                    </div>
-                  ))}
-                  {(timeLogs?.length ?? 0) === 0 && (
-                    <p className="text-gray-400 text-sm text-center py-8">No time logged yet.</p>
-                  )}
                 </div>
               )}
 
@@ -445,7 +399,7 @@ export function TicketDetailPage() {
 
             {ticket.category && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Category</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Type</p>
                 <span
                   className="text-xs px-2 py-1 rounded-full font-medium"
                   style={{ backgroundColor: ticket.category.color + '20', color: ticket.category.color }}
@@ -464,16 +418,37 @@ export function TicketDetailPage() {
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Assignee</p>
-              {ticket.assignee ? (
-                <div className="flex items-center gap-2">
-                  <Avatar src={ticket.assignee.avatar_url} name={ticket.assignee.name} size="sm" />
-                  <span className="text-sm text-gray-700">{ticket.assignee.name}</span>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Assignees</p>
+              {ticket.assignees && ticket.assignees.length > 0 ? (
+                <div className="space-y-2">
+                  {ticket.assignees.map((a) => (
+                    <div key={a.id} className="flex items-center gap-2">
+                      <Avatar src={a.avatar_url} name={a.name} size="sm" />
+                      <span className="text-sm text-gray-700">{a.name}</span>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <span className="text-sm text-gray-400">Unassigned</span>
               )}
             </div>
+
+            {ticket.partner && (
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Partner</p>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{ticket.partner.name}</p>
+                  {ticket.partner.company && (
+                    <p className="text-xs text-gray-500">{ticket.partner.company}</p>
+                  )}
+                  {ticket.partner.email && (
+                    <a href={`mailto:${ticket.partner.email}`} className="text-xs text-indigo-600 hover:underline">
+                      {ticket.partner.email}
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Due Date</p>
@@ -488,6 +463,21 @@ export function TicketDetailPage() {
             )}
 
             <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Progress</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                  <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${ticket.progress ?? 0}%` }} />
+                </div>
+                <span className="text-xs text-gray-600 font-medium">{ticket.progress ?? 0}%</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Time Logged</p>
+              <p className="text-sm text-gray-700">{ticket.total_hours_logged ? `${ticket.total_hours_logged}h` : '—'}</p>
+            </div>
+
+            <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Created</p>
               <p className="text-sm text-gray-700">{formatDateTime(ticket.created_at)}</p>
             </div>
@@ -495,17 +485,125 @@ export function TicketDetailPage() {
         </div>
       </div>
 
-      {/* Log Time Modal */}
-      <Modal open={timeLogModal} onClose={() => setTimeLogModal(false)} title="Log Time">
-        <div className="space-y-4">
-          <Input label="Date" type="date" value={logDate} max={new Date().toISOString().split('T')[0]}
-            onChange={(e) => setLogDate(e.target.value)} />
-          <Input label="Minutes" type="number" min="1" max="1440" value={logMinutes}
-            onChange={(e) => setLogMinutes(e.target.value)} />
-          <Input label="Description (optional)" value={logDesc} onChange={(e) => setLogDesc(e.target.value)} />
-          <div className="flex gap-3 pt-2">
-            <Button onClick={() => timeLogMutation.mutate()} loading={timeLogMutation.isPending}>Save</Button>
-            <Button variant="outline" onClick={() => setTimeLogModal(false)}>Cancel</Button>
+      {/* Combined Comment + Ticket Update Modal */}
+      <Modal open={commentModal} onClose={() => setCommentModal(false)} title="Add Comment">
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+
+          {/* Ticket fields */}
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Status" value={cmtStatus} onChange={(e) => setCmtStatus(e.target.value)}>
+              <option value="">— no change —</option>
+              {['open', 'in_progress', 'in_review', 'resolved', 'closed'].map((s) => (
+                <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+              ))}
+            </Select>
+
+            <Select label="Priority" value={cmtPriority} onChange={(e) => setCmtPriority(e.target.value)}>
+              <option value="">— no change —</option>
+              {['low', 'medium', 'high', 'critical'].map((p) => (
+                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </Select>
+
+            <Select label="Label" value={cmtLabelId} onChange={(e) => setCmtLabelId(e.target.value)}>
+              <option value="">— no change —</option>
+              {labels?.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </Select>
+
+            <Select label="Type" value={cmtCategoryId} onChange={(e) => setCmtCategoryId(e.target.value)}>
+              <option value="">— no change —</option>
+              {categories?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+
+            <Input
+              label="Due Date"
+              type="date"
+              value={cmtDueDate}
+              onChange={(e) => setCmtDueDate(e.target.value)}
+            />
+
+            <Select label="Progress" value={cmtProgress} onChange={(e) => setCmtProgress(e.target.value)}>
+              {[0, 10, 25, 50, 75, 90, 100].map((p) => (
+                <option key={p} value={p}>{p}%</option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Time log */}
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Work Hours"
+              type="number"
+              min="0"
+              step="0.25"
+              placeholder="e.g. 1.5"
+              value={logHours}
+              onChange={(e) => setLogHours(e.target.value)}
+            />
+            <Input
+              label="Log Date"
+              type="date"
+              value={logDate}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => setLogDate(e.target.value)}
+            />
+          </div>
+
+          {/* Comment body */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+            <textarea
+              rows={4}
+              value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)}
+              placeholder="Describe what was done, any blockers, or notes..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+
+          {/* Attached file chips */}
+          {commentFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {commentFiles.map((file, i) => (
+                <div key={i} className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs px-2 py-1 rounded-full">
+                  {file.type.startsWith('image/') ? <Image size={11} /> : <FileText size={11} />}
+                  <span className="max-w-[140px] truncate">{file.name}</span>
+                  <button type="button" onClick={() => setCommentFiles((prev) => prev.filter((_, idx) => idx !== i))} className="hover:text-red-500 transition-colors">
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-1">
+            <Button
+              onClick={handleCommentSubmit}
+              loading={isCommentSubmitting}
+              disabled={!commentBody.trim() && commentFiles.length === 0 && !(logHours && parseFloat(logHours) > 0)}
+            >
+              Post
+            </Button>
+            <input
+              id="modal-comment-file-input"
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                setCommentFiles((prev) => [...prev, ...picked]);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => document.getElementById('modal-comment-file-input')?.click()}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 border border-gray-300 rounded-lg hover:border-indigo-400"
+            >
+              <Paperclip size={13} /> Attach Files
+            </button>
+            <Button variant="outline" onClick={() => setCommentModal(false)} className="ml-auto">Cancel</Button>
           </div>
         </div>
       </Modal>

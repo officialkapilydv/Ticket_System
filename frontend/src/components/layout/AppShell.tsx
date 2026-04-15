@@ -8,8 +8,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/time-logs': 'My Time Logs',
   '/admin': 'Admin Dashboard',
   '/admin/users': 'User Management',
-  '/admin/categories': 'Categories',
+  '/admin/types': 'Types',
   '/admin/labels': 'Labels',
+  '/admin/partners': 'Partners',
 };
 
 export function AppShell() {

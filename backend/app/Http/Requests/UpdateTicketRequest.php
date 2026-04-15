@@ -23,7 +23,11 @@ class UpdateTicketRequest extends FormRequest
             'priority'        => ['sometimes', new Enum(TicketPriority::class)],
             'label_id'        => ['sometimes', 'nullable', 'exists:labels,id'],
             'category_id'     => ['nullable', 'exists:categories,id'],
-            'assignee_id'     => ['nullable', 'exists:users,id'],
+            'assignee_ids'    => ['nullable', 'array'],
+            'assignee_ids.*'  => ['exists:users,id'],
+            'partner_id'      => ['sometimes', 'nullable', 'exists:partners,id'],
+            'project_id'      => ['nullable', 'exists:projects,id'],
+            'milestone_id'    => ['nullable', 'exists:milestones,id'],
             'due_date'        => ['nullable', 'date'],
             'estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:9999'],
         ];

@@ -4,17 +4,18 @@ interface AvatarProps {
   src?: string | null;
   name: string;
   size?: 'sm' | 'md' | 'lg';
+  className?: string;
 }
 
 const sizes = { sm: 'h-7 w-7 text-xs', md: 'h-9 w-9 text-sm', lg: 'h-12 w-12 text-base' };
 
-export function Avatar({ src, name, size = 'md' }: AvatarProps) {
+export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
   if (src) {
     return (
       <img
         src={src}
         alt={name}
-        className={clsx('rounded-full object-cover flex-shrink-0', sizes[size])}
+        className={clsx('rounded-full object-cover flex-shrink-0', sizes[size], className)}
       />
     );
   }
@@ -25,7 +26,8 @@ export function Avatar({ src, name, size = 'md' }: AvatarProps) {
     <span
       className={clsx(
         'rounded-full bg-indigo-600 text-white font-semibold flex items-center justify-center flex-shrink-0',
-        sizes[size]
+        sizes[size],
+        className
       )}
     >
       {initials}

@@ -14,18 +14,31 @@ class Comment extends Model
 
     use SoftDeletes;
 
-    protected $fillable = ['ticket_id', 'user_id', 'parent_id', 'body', 'is_internal'];
+    protected $fillable = ['ticket_id', 'task_id', 'user_id', 'parent_id', 'body', 'is_internal', 'minutes', 'logged_date'];
+
+    protected $appends = ['logged_hours'];
 
     protected function casts(): array
     {
         return [
             'is_internal' => 'boolean',
+            'logged_date' => 'date:Y-m-d',
         ];
+    }
+
+    public function getLoggedHoursAttribute(): ?float
+    {
+        return $this->minutes ? round($this->minutes / 60, 2) : null;
     }
 
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);
+    }
+
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
     }
 
     public function user(): BelongsTo
