@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { AiChatWidget } from '@/features/ai/AiChatWidget';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'My Dashboard',
@@ -26,6 +27,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <AiChatWidget />
     </div>
   );
 }

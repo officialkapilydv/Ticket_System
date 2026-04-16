@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\AiChatController;
 use App\Http\Controllers\Api\UserDashboardController;
 use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\ReportController;
@@ -119,6 +120,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/projects', [ReportController::class, 'projects']);
             Route::get('/tasks',    [ReportController::class, 'tasks']);
             Route::get('/tickets',  [ReportController::class, 'tickets']);
+        });
+
+        // AI Assistant
+        Route::prefix('ai')->middleware('throttle:30,1')->group(function () {
+            Route::post('/chat', [AiChatController::class, 'chat']);
+            Route::get('/conversations', [AiChatController::class, 'conversations']);
         });
 
         // User dashboard

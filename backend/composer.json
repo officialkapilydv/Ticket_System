@@ -10,6 +10,8 @@
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
+        "mozex/anthropic-laravel": "^1.5",
+        "openai-php/laravel": "*",
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-query-builder": "^7.2"
     },
